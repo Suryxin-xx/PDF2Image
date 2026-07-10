@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  使用 PyInstaller + UPX 将 PDF导出为图片 打包为单个 exe
+  使用 PyInstaller + UPX 将 PDF2Image 打包为单个 exe
 #>
 
 param([switch]$OneDir, [switch]$NoUPX)
@@ -10,7 +10,7 @@ $ScriptDir = $PSScriptRoot
 $OutputDir = Join-Path $ScriptDir "dist"
 
 Write-Host ""
-Write-Host "=== PDF导出为图片 - 打包脚本 ===" -ForegroundColor Cyan
+Write-Host "=== PDF2Image - 打包脚本 ===" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
@@ -39,7 +39,7 @@ foreach ($d in @("build", $OutputDir)) { if (Test-Path $d) { Remove-Item -Recurs
 
 # 打包
 $EntryPoint = Join-Path $ScriptDir "main.py"
-$PyArgs = @("--clean", "--name", "PDF导出为图片", "--distpath", $OutputDir)
+$PyArgs = @("--clean", "--name", "PDF2Image", "--distpath", $OutputDir)
 
 if ($OneDir) { $PyArgs += "--onedir" }
 else { $PyArgs += "--onefile"; $PyArgs += "--noconsole" }
@@ -49,8 +49,8 @@ if ($upxPath) { $PyArgs += "--upx-dir"; $PyArgs += (Split-Path $upxPath -Parent)
 python -m PyInstaller @PyArgs $EntryPoint
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n=== ✅ 打包成功 ===" -ForegroundColor Green
-    $outFile = Join-Path $OutputDir "PDF导出为图片.exe"
+    Write-Host "`n=== 打包成功 ===" -ForegroundColor Green
+    $outFile = Join-Path $OutputDir "PDF2Image.exe"
     if (Test-Path $outFile) {
         $size = [math]::Round((Get-Item $outFile).Length / 1MB, 1)
         Write-Host "输出: $outFile" -ForegroundColor Green
@@ -59,3 +59,7 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Host "[错误] 打包失败" -ForegroundColor Red; exit 1
 }
+
+# 清理临时文件
+Remove-Item (Join-Path $ScriptDir "build") -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $ScriptDir "PDF2Image.spec") -ErrorAction SilentlyContinue

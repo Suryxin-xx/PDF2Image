@@ -2,11 +2,14 @@
 核心转换模块 — PDF 导出为图片
 
 支持格式: PNG / JPEG / TIFF / BMP / WEBP
+支持扫描件增强（锐化 + 对比度 + 自动色阶）
 """
 
 import os
 from pathlib import Path
 from typing import Callable, Optional
+
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 ProgressCB = Callable[[int, int, str], None]
 
@@ -31,24 +34,31 @@ def pdf_to_images(
     quality: int = 90,
     pages: Optional[list] = None,
     progress_cb: Optional[ProgressCB] = None,
+    image_enhance: bool = False,
+    enhance_sharpness: int = 80,
+    enhance_cutoff: int = 2,
+    enhance_contrast: float = 1.15,
 ) -> list[str]:
     """
     将 PDF 每页导出为图片。
 
     参数:
-        pdf_path:    输入 PDF 路径
-        output_dir:  输出目录
-        fmt:         图片格式 (PNG/JPEG/TIFF/BMP/WEBP)
-        dpi:         渲染 DPI
-        quality:     JPEG/WEBP 质量 (1-100)
-        pages:       指定页码列表 (0-based)，None=全部
-        progress_cb: 进度回调 (current, total, stage)
+        pdf_path:        输入 PDF 路径
+        output_dir:      输出目录
+        fmt:             图片格式 (PNG/JPEG/TIFF/BMP/WEBP)
+        dpi:             渲染 DPI
+        quality:         JPEG/WEBP 质量 (1-100)
+        pages:           指定页码列表 (0-based)，None=全部
+        progress_cb:     进度回调 (current, total, stage)
+        image_enhance:   是否开启扫描件增强
+        enhance_sharpness: 锐化强度 (0-200，0=不锐化，默认80)
+        enhance_cutoff:   去黄力度 (0-10，0=不去黄，默认2)
+        enhance_contrast: 对比度 (1.0-2.0，默认1.15)
 
     返回:
         生成的文件路径列表
     """
     import fitz
-    from PIL import Image
 
     fmt_key = fmt.upper()
     if fmt_key not in SUPPORTED_FORMATS:
@@ -81,8 +91,15 @@ def pdf_to_images(
         page = doc[page_num]
         pix = page.get_pixmap(matrix=mat)
 
-        # 通过 Pillow 保存（支持更多格式参数）
+        # 通过 Pillow 处理
         img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+
+        # ---- 扫描件增强 ----
+        if image_enhance:
+            img = _enhance_image(img, sharpness=enhance_sharpness,
+                                 cutoff=enhance_cutoff, contrast=enhance_contrast)
+            if progress_cb:
+                progress_cb(idx + 1, len(pages), "增强中")
 
         out_name = f"{base_name}_p{page_num + 1:04d}{ext}"
         out_path = os.path.join(output_dir, out_name)
@@ -95,6 +112,36 @@ def pdf_to_images(
 
     doc.close()
     return generated
+
+
+def _enhance_image(img: Image.Image,
+                   sharpness: int = 80,
+                   cutoff: int = 2,
+                   contrast: float = 1.15) -> Image.Image:
+    """
+    对扫描件图片进行增强处理。
+
+    参数:
+        sharpness: 锐化强度 0-200，0=跳过锐化（默认80）
+        cutoff:    去黄力度 0-10，0=跳过自动色阶（默认2）
+        contrast:  对比度 1.0-2.0（默认1.15）
+    """
+    # 1. 锐化（sharpness=0 时跳过）
+    if sharpness > 0:
+        img = img.filter(ImageFilter.UnsharpMask(
+            radius=1.0, percent=sharpness, threshold=3))
+
+    # 2. 自动色阶去黄（cutoff=0 时跳过）
+    #    preserve_tone=True → 三个通道一起拉伸，不破坏色彩关系
+    if cutoff > 0:
+        img = ImageOps.autocontrast(img, cutoff=cutoff, preserve_tone=True)
+
+    # 3. 对比度增强
+    if contrast > 1.0:
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(contrast)
+
+    return img
 
 
 def _get_save_kwargs(pil_fmt: str, quality: int = 90) -> dict:

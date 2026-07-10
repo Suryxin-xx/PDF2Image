@@ -20,8 +20,9 @@
 - 需要从 PDF 中提取图片素材
 - 想把 PDF 的每一页拆成独立的图片文件
 - 需要将 PDF 转为特定格式（如 JPEG / TIFF）用于打印或发布
+- 扫描版 PDF 文字模糊，希望在导出时顺便增强清晰度
 
-这个小工具就是为此而生，**将 PDF 每一页导出为高清图片**，支持多种常见图片格式。
+这个小工具就是为此而生，**将 PDF 每一页导出为高清图片**，支持多种常见图片格式，内置扫描件增强功能。
 
 ## ✨ 功能特性
 
@@ -32,6 +33,7 @@
 | 🎚️ **DPI 可调** | 150 / 200 / 300 / 400 DPI，平衡清晰度与文件大小 |
 | ⚙️ **质量调节** | JPEG/WEBP 模式下可自定义压缩质量 |
 | 📄 **页面范围选择** | 全部导出 / 自定义页码（如 `1,3,5-10`）|
+| ✨ **扫描件增强** | 锐化 + 去尘 + 对比度调节，让老旧扫描件更清晰 |
 | ⚡ **双模式运行** | **GUI 图形界面** + **CLI 命令行** |
 | 📊 **实时进度** | 进度条 + 当前页码提示 |
 | 📂 **一键直达** | 导出完成后直接打开输出文件夹 |
@@ -40,7 +42,7 @@
 
 ![主界面截图](screenshots/ScreenShot.png)
 
-*主界面：选择 PDF → 设置格式/DPI/页码 → 开始导出*
+*主界面：选择 PDF → 增强设置 → 选择格式/DPI/页码 → 开始导出*
 
 ## 📦 下载
 
@@ -48,7 +50,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `PDF导出为图片_v1.0.zip` | 单 exe 文件，解压即用（推荐） |
+| `PDF导出为图片.zip` | 单 exe 文件，解压即用（推荐） |
 
 **系统要求：** Windows 10/11，64 位
 
@@ -60,28 +62,44 @@
 
 1. **选择 PDF** — 点击"浏览"选择文件
 2. **选择输出目录** — 图片保存到哪里
-3. **选择格式** — PNG / JPEG / TIFF / BMP / WEBP
-4. **调节 DPI 和质量** — JPEG/WEBP 时可调质量
-5. **选择页面范围** — 全部或自定义
-6. **点击导出** — 等待进度条走完
+3. **启用增强（可选）** — 勾选"扫描件增强"并调节锐度/去尘/对比度参数
+4. **选择格式** — PNG / JPEG / TIFF / BMP / WEBP
+5. **调节 DPI 和质量** — JPEG/WEBP 时可调质量
+6. **选择页面范围** — 全部或自定义
+7. **点击导出** — 等待进度条走完
+
+### 扫描件增强说明
+
+针对老旧纸质版扫描 PDF，勾选 **扫描件增强** 后可调整：
+
+| 参数 | 范围 | 默认值 | 作用 |
+|------|------|--------|------|
+| 锐化强度 | 0–200 | 80 | 增强文字边缘清晰度 |
+| 去尘等级 | 0–10 | 2 | 去除扫描噪点和杂色 |
+| 对比度 | 1.0–2.0 | 1.15 | 拉伸黑白对比，让文字更醒目 |
+
+> 点击 **恢复默认** 可将三个参数一键复位。
 
 ### CLI 模式
 
 ```bash
 # 基本用法（默认 PNG, 200 DPI）
-PDF导出为图片.exe input.pdf
+PDF2Image.exe input.pdf
 
 # 指定格式和 DPI
-PDF导出为图片.exe input.pdf -f JPEG --dpi 300
+PDF2Image.exe input.pdf -f JPEG --dpi 300
 
 # 指定质量（仅 JPEG/WEBP 有效）
-PDF导出为图片.exe input.pdf -f JPEG -q 95
+PDF2Image.exe input.pdf -f JPEG -q 95
 
 # 指定页面范围
-PDF导出为图片.exe input.pdf -f TIFF -p 1-5,8,10
+PDF2Image.exe input.pdf -f TIFF -p 1-5,8,10
 
 # 指定输出目录
-PDF导出为图片.exe input.pdf -o D:\my_images
+PDF2Image.exe input.pdf -o D:\my_images
+
+# 启用扫描件增强并自定义参数
+PDF2Image.exe input.pdf --enhance --enhance-sharpness 120 --enhance-cutoff 3 --enhance-contrast 1.3
 ```
 
 ## 🔧 从源码运行
@@ -107,7 +125,7 @@ python main.py input.pdf -f JPEG --dpi 300
 |------|------|
 | [Python](https://www.python.org/) | 编程语言 |
 | [PyMuPDF (fitz)](https://pypi.org/project/PyMuPDF/) | PDF 渲染 |
-| [Pillow](https://python-pillow.org/) | 图片编码与保存 |
+| [Pillow](https://python-pillow.org/) | 图片编码、保存与增强处理 |
 | [tkinter](https://docs.python.org/3/library/tkinter.html) | GUI 界面（内置） |
 | [PyInstaller](https://pyinstaller.org/) | 打包为 exe |
 
@@ -117,7 +135,7 @@ python main.py input.pdf -f JPEG --dpi 300
 PDF2Image/
 ├── src/                    # 源代码
 │   ├── __init__.py
-│   ├── converter.py        # 核心转换逻辑
+│   ├── converter.py        # 核心转换逻辑 + 图像增强
 │   └── gui.py              # 图形界面
 ├── main.py                 # 入口（GUI / CLI 双模式）
 ├── requirements.txt        # Python 依赖
@@ -137,7 +155,7 @@ pip install -r requirements.txt
 .\build_exe.ps1
 ```
 
-打包后的 exe 位于 `dist/PDF导出为图片.exe`。
+打包后的 exe 位于 `dist/PDF2Image.exe`。
 
 ## 📄 许可证
 
